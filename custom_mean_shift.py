@@ -100,7 +100,6 @@ class Mean_Shift():
             clusters[label] = [[point], 1, point, None]
         loops = 0
         prev_radius = 0
-        # print(clusters)
         # do this instead of a while loop to avoid infinite loops
         for _ in range(self.max_iter):
             # loop through each exiting cluster centroid and calc distances between it and all
@@ -108,7 +107,6 @@ class Mean_Shift():
             for label in clusters:
                 for point in data:
                     distance = np.linalg.norm(point - clusters[label][2])
-                    # print(distance)
                     # the way we use our weight list is to see how many 'radiuses' away this certain
                     # point is from the cluster centroid. The fewer mulitples of radiuses away then
                     # the smaller int(distance / self.radius) will be and thus we willl pick a
@@ -116,7 +114,6 @@ class Mean_Shift():
                     # cap it at self.radius_step-1 as our weight list is only self.radius_step #
                     # of elements long. Thus super far away vectors get the smallest weight
                     weight_index = min(int(distance / self.radius), self.radius_step-1)
-                    # print(weight_index)
                     # then we do this vs. his method of putting Weight number of duplicates and then
                     # averaging that iterable by just scaling the vector by weight and then adding
                     # weight to the denominator to avoid creating very large lists
@@ -234,6 +231,7 @@ class Mean_Shift():
             # = label) and I do this because self.final_clusters has the cluster's actual 
             # location which i also need
             closest_cluster = self.final_clusters[distances.index(min(distances))][0]
+            print("cluster:", closest_cluster, "point:", point)
             if closest_cluster not in self.cluster_mapping:
                 self.cluster_mapping[closest_cluster] = [point]
             else:
@@ -241,7 +239,7 @@ class Mean_Shift():
 
         percent_clusters = len(self.final_clusters) / len(data)
 
-        if percent_clusters > .35:
+        if percent_clusters > .25:
             self.refit(data, percent_clusters)
 
     def refit(self, data, percent, new_radius=.08):
@@ -253,6 +251,12 @@ class Mean_Shift():
         print("ran a refit because percent centroids was: {}%".format(percent*100))
         print("Old radius was {} and now we are switching to {}".format(self.radius, new_radius))
         self.radius = new_radius
+        # need to reset the cluster_mapping dictionary as there were instances where a point 
+        # happened to be in a label that was then reused and turned into another centroid. So 
+        # the point existed in both clusters and would sometimes be colored incorrectly when 
+        # graphing. Now when we reset cluster_mapping this ensures the graph will correctly reflect
+        # the latest model
+        self.cluster_mapping = {}
         self.fit(data)
 
 
@@ -347,8 +351,55 @@ X, y = make_blobs(n_samples=45, centers=5, n_features=2)
 #  [  7.99371417,  -1.23643485]])
 
 
-##plt.scatter(X[:,0], X[:,1], s=150)
-##plt.show()
+# This dataset helped me pinpoint the graphing error that was occuring. When point
+ # [ -6.66705661,4.21938464] existed in both final label lists because I wasn't re-setting the
+ # cluster_mapping dict and thus it would sometimes be colored incorrectly
+# X = np.array([[-8.20699468,   4.65419474],
+#  [ -6.66705661,   4.21938464],
+#  [ -4.19753991 ,  3.5639762 ],
+#  [ -7.54513203  , 4.64472663],
+#  [ -6.16692983   ,7.06101813],
+#  [  7.97479022,  -8.5574631 ],
+#  [  8.33245139, -11.11105395],
+#  [ -4.89136165 ,  4.7414191 ],
+#  [ -4.76182563  , 4.02958216],
+#  [ 10.27557104  ,-9.86624515],
+#  [  8.88968009  ,-9.51168891],
+#  [ -7.61443835  , 5.08389019],
+#  [ -9.61900709  , 6.22675457],
+#  [ -6.6260817    ,5.2341388 ],
+#  [  8.97191642, -10.17068211],
+#  [ -8.72687674,   3.76122938],
+#  [ -3.74472539,   5.17761942],
+#  [ -8.91579677,   5.24204856],
+#  [  6.54739543,  -5.07389225],
+#  [ -4.50248934,   2.47509302],
+#  [ -4.47583529 ,  3.26022356],
+#  [  7.79413313  ,-4.05799624],
+#  [  7.28723565  ,-3.92248641],
+#  [  9.23340814  ,-5.11947635],
+#  [  8.78572778  ,-3.25215093],
+#  [ -8.33677989   ,7.85244239],
+#  [ -4.21291599   ,7.17559603],
+#  [ -4.72858452,   6.01193411],
+#  [  8.57476605 , -5.71729339],
+#  [  8.87621411  ,-4.36211741],
+#  [  9.98960243  ,-8.54490241],
+#  [ -5.21707024  , 5.9969497 ],
+#  [ -3.73276917   ,3.29239348],
+#  [  9.37056418,  -3.35482103],
+#  [ -5.43597627 ,  3.25538767],
+#  [  9.7846599  ,-10.04209324],
+#  [ -5.02056174  , 3.10163233],
+#  [ -4.53356335  , 4.90477783],
+#  [  8.13728327 ,-10.57526789],
+#  [  8.24964095  ,-9.95149265],
+#  [ -5.18011655   ,3.11997932],
+#  [ -4.88069031   ,4.53200878],
+#  [-11.19837456   ,5.7236257 ],
+#  [  9.76408474  ,-5.16301474],
+#  [ -5.9020122    ,3.64709476]])
+
 
 colors = 10*["g","r","c","b","k", "y", "m"]
 
@@ -356,25 +407,14 @@ clf = Mean_Shift()
 clf.fit(X)
 
 centroids = clf.final_clusters
-print("radius:", clf.radius)
-print(X)
 print("# of centroids:", len(centroids))
-print(centroids)
+print("Centroid locations: ", centroids)
 # plot the centroids based on what it was trained on X
 for centroid in centroids:
     label = centroid[0]
     color = colors[label]
     plt.scatter(centroid[1][0], centroid[1][1], color=color, marker='*', s=150, linewidths=5)
     [plt.scatter(pt[0], pt[1], color=color, marker='o', s=100, linewidths=5, alpha=.3) for pt in clf.cluster_mapping[label]]
-
-# for num, pt in enumerate(X):
-#     color = colors[y[num]]
-#     plt.scatter(pt[0], pt[1], color=color, marker='o', s=150, linewidths=5, alpha=.5)
-
-# for label in clf.cluster_mapping:
-#     color = colors[label]
-#     pts = clf.cluster_mapping[label]
-#     [plt.scatter(pt[0], pt[1], color=color, marker='*', s=150, linewidths=5) for pt in pts]
 
 plt.show()
 
