@@ -266,7 +266,7 @@ class Mean_Shift():
 # it returns is a list of all the input data points. And the 2nd (y) is a list of the cluster label
 # ground truth values (can use to test how our meanshift is doing)
 
-X, y = make_blobs(n_samples=35, centers=4, n_features=2)
+X, y = make_blobs(n_samples=45, centers=5, n_features=2)
 
 # this data set below was making my algorithm create way too many centroids. almost one for each 
 # datapoint. If I increased the self.radius to .08 it helped. It was because the self.radius that 
